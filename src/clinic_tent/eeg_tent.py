@@ -2,32 +2,20 @@ import time
 
 import pandas as pd
 import ray
+from config import ROOT_PATH
 from data_sources.neutronic import Neutronic
 from knn_tent.knn_tent import KnnTent
 from preprocessing.tools import filter_signal, hilbert_phase, wavelet_phase
-from ray.experimental.tqdm_ray import tqdm
 
-NUM_CPUS = 4
-WORKING_DIR = ""
-ray.init(num_cpus=NUM_CPUS, runtime_env={"working_dir": WORKING_DIR})
+from clinic_tent.eeg_tent_tools import Progress
 
-
-@ray.remote
-class Progress:
-    def __init__(self, max_it=1, pbar=True):
-        self.pbar_flag = pbar
-        self.pbar = tqdm(total=max_it)
-        self.count = -1
-        self.max_it = max_it
-        self.update()
-
-    def update(self):
-        if self.pbar_flag:
-            self.pbar.update()
-        else:
-            self.count += 1
-            p = 100 * self.count / self.max_it
-            print(f"Progress: {p:.2f}%  {self.count}/{self.max_it}")
+NUM_CPUS = 8
+if not ray.is_initialized():
+    ray.init(
+        num_cpus=NUM_CPUS,
+        runtime_env={"working_dir": ROOT_PATH},
+        ignore_reinit_error=True,
+    )
 
 
 class EEGTent:
@@ -40,21 +28,21 @@ class EEGTent:
         self.channels = self.reader.channels
 
     def _compute_tent(self, data, target_channel, source_channel, tent_parameters):
-        m = tent_parameters["embeding_dim"]
+        m = tent_parameters["embedding_dim"]
         tau = tent_parameters["tau"]
         u = tent_parameters["u"]
         nn = tent_parameters["nn"]
         n_surrogates = tent_parameters["nsurrogates"]
         # Create KNN tent object
-        target = data[target_channel]
-        source = data[source_channel]
+        target = data[target_channel].values
+        source = data[source_channel].values
 
         knn_tent = KnnTent(target, source, m, tau, u, nn)
         # Compute transfer entropy
         out = knn_tent.knn_tent(n_surrogates=n_surrogates)
         return (target_channel, source_channel, out[0], out[1], out[2])
 
-    @ray.remote()
+    @ray.remote(num_cpus=NUM_CPUS)
     def _multiprocessing(self, data, target_channel, source_channel, tent_parameters):
         result = self._compute_tent(
             data, target_channel, source_channel, tent_parameters
@@ -99,7 +87,10 @@ class EEGTent:
 
         self._get_phases(filter_parameters)
 
-        DATA_id = ray.put(self.phase_data)
+        if multiprocessing:
+            DATA_id = ray.put(self.phase_data)
+        else:
+            DATA_id = self.raw_data
         # Set tent for each channel
         sims = []
         for target_channel in self.channels:
@@ -115,11 +106,10 @@ class EEGTent:
 
         res = []
         if multiprocessing and log:
-            self.progress = Progress(max_it=len(sims))
+            self.progress = Progress.remote(len(sims), pbar=False)
         else:
             self.progress = []
         for s in sims:
-            time.sleep(0.2)
             if multiprocessing:
                 res.append(
                     self._multiprocessing.remote(

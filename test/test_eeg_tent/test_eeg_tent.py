@@ -16,10 +16,19 @@ except ImportError:
 
 def test_eeg_tent():
     file = DATA_PATH / "neutronic_data.txt"
-    tent_parameters = {"embedding_dim": 3, "tau": 2, "u": 1, "nn": 12}
+    tent_parameters = {
+        "embedding_dim": 2,
+        "tau": 2,
+        "u": 1,
+        "nn": 12,
+        "nsurrogates": 1,
+    }
     filter_parameters = {"lowcut": 8, "highcut": 12, "fs": 256, "order": 4}
     eeg_tent = EEGTent(file)
-    eeg_tent.tent(tent_parameters, filter_parameters)
+    results = eeg_tent.tent(
+        tent_parameters, filter_parameters, multiprocessing=True, log=True
+    )
+    pass
 
 
 if __name__ == "__main__":
