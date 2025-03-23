@@ -1,17 +1,17 @@
+import sys
+from pathlib import Path
+
 import numpy as np
 import plotly.graph_objects as go
-from pathlib import Path
-import sys
-
 
 ROOT_PATH = Path(__file__).absolute().parent.parent.parent
 DATA_PATH = ROOT_PATH / "data"
 
 try:
-    from src.preprocessing.neutronic import Neutronic
+    from src.data_sources.neutronic import Neutronic
 except ImportError:
     sys.path.append("../../src/")
-    from preprocessing.neutronic import Neutronic
+    from data_sources.neutronic import Neutronic
 
 
 def test_neutronic():

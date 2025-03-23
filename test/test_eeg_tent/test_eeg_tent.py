@@ -1,0 +1,26 @@
+import sys
+from pathlib import Path
+
+import numpy as np
+import plotly.graph_objects as go
+
+ROOT_PATH = Path(__file__).absolute().parent.parent.parent
+DATA_PATH = ROOT_PATH / "data"
+
+try:
+    from src.clinic_tent.eeg_tent import EEGTent
+except ImportError:
+    sys.path.append("../../src/")
+    from clinic_tent.eeg_tent import EEGTent
+
+
+def test_eeg_tent():
+    file = DATA_PATH / "neutronic_data.txt"
+    tent_parameters = {"embedding_dim": 3, "tau": 2, "u": 1, "nn": 12}
+    filter_parameters = {"lowcut": 8, "highcut": 12, "fs": 256, "order": 4}
+    eeg_tent = EEGTent(file)
+    eeg_tent.tent(tent_parameters, filter_parameters)
+
+
+if __name__ == "__main__":
+    test_eeg_tent()

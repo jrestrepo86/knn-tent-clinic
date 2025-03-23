@@ -1,11 +1,12 @@
-import numpy as np
 import sys
+
+import numpy as np
 import plotly.graph_objects as go
 
 try:
     from src.knn_tent.knn_tent import KnnTent
 except ImportError:
-    sys.path.append("../src/")
+    sys.path.append("../../src/")
     from knn_tent.knn_tent import KnnTent
 
 
@@ -31,20 +32,23 @@ def coupledHenon(n, c):
 
 def test_henon01():
     c = np.linspace(0, 0.9, 21)
-    Txy = []
-    Tyx = []
+    Final_Tent = []
+    Tent = []
+    Tent_sur = []
     for c0 in c:
-        x, y = coupledHenon(n=10000, c=c0)
-        Ktxy = KnnTent(x, y, m=2, tau=3, u=1, nn=12)
-        Ktyx = KnnTent(y, x, m=2, tau=3, u=1, nn=12)
-        Txy.append(Ktxy.knn_tent())
-        Tyx.append(Ktyx.knn_tent())
-    Txy = np.array(Txy)
-    Tyx = np.array(Tyx)
+        source, target = coupledHenon(n=10000, c=c0)
+        knn_tent = KnnTent(
+            target, source, m=2, tau=3, u=1, nn=12, normalize_series=True
+        )
+        out = knn_tent.knn_tent(n_surrogates=10)
+        Final_Tent.append(out[0])
+        Tent.append(out[1])
+        Tent_sur.append(out[2])
 
     fig = go.Figure()
-    fig = go.Figure(go.Scatter(x=c, y=Txy, name="Txy"))
-    fig.add_trace(go.Scatter(x=c, y=Tyx, name="Tyx"))
+    fig = go.Figure(go.Scatter(x=c, y=Final_Tent, name="Final_Tent"))
+    fig.add_trace(go.Scatter(x=c, y=Tent, name="Tent"))
+    fig.add_trace(go.Scatter(x=c, y=Tent_sur, name="Tent_sur"))
     fig.show()
 
 
