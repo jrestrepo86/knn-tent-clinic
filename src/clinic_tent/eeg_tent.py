@@ -7,12 +7,9 @@ from data_sources.neutronic import Neutronic
 from knn_tent.knn_tent import KnnTent
 from preprocessing.tools import filter_signal, hilbert_phase, wavelet_phase
 
-from clinic_tent.eeg_tent_tools import Progress
-
 NUM_CPUS = 8
 if not ray.is_initialized():
     ray.init(
-        num_cpus=NUM_CPUS,
         runtime_env={"working_dir": ROOT_PATH},
         ignore_reinit_error=True,
     )
@@ -47,8 +44,6 @@ class EEGTent:
         result = self._compute_tent(
             data, target_channel, source_channel, tent_parameters
         )
-        if self.progress:
-            self.progress.update.remote()
         return result
 
     def _get_phases(self, filter_parameters, type="hilbert"):
@@ -68,7 +63,7 @@ class EEGTent:
             for ch in self.channels:
                 data = self.raw_data[ch]
                 self.phase_data[ch] = wavelet_phase(
-                    self.raw_data, lowcut, highcut, fs, omega0=5.0, num_scales=10
+                    data, lowcut, highcut, fs, omega0=5.0, num_scales=10
                 )
         else:
             raise ValueError("Invalid type of phase")
@@ -83,9 +78,16 @@ class EEGTent:
             results, columns=["target", "source", "Tent", "Tent_no_sur", "Tent_sur"]
         )
 
-    def tent(self, tent_parameters, filter_parameters, multiprocessing=False, log=True):
+    def tent(
+        self,
+        tent_parameters,
+        filter_parameters,
+        filter_type="hilbert",
+        multiprocessing=False,
+        log=True,
+    ):
 
-        self._get_phases(filter_parameters)
+        self._get_phases(filter_parameters, type=filter_type)
 
         if multiprocessing:
             DATA_id = ray.put(self.phase_data)
@@ -105,10 +107,6 @@ class EEGTent:
                     sims.append(sim_params)
 
         res = []
-        if multiprocessing and log:
-            self.progress = Progress.remote(len(sims), pbar=False)
-        else:
-            self.progress = []
         for s in sims:
             if multiprocessing:
                 res.append(
@@ -124,4 +122,13 @@ class EEGTent:
                 )
         if multiprocessing:
             res = ray.get(res)
-        return self._collect_reults(res)
+
+        results = []
+        results += [
+            (target, source, Tent, Tent_no_sur, Tent_sur)
+            for target, source, Tent, Tent_no_sur, Tent_sur in res
+        ]
+        results = pd.DataFrame(
+            results, columns=["target", "source", "Tent", "Tent_no_sur", "Tent_sur"]
+        )
+        return results
