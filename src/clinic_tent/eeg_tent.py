@@ -16,7 +16,7 @@ if not ray.is_initialized():
 
 
 class EEGTent:
-    def __init__(self, file, file_source="neutronic"):
+    def __init__(self, file):
         self.file = file
         self.reader = Neutronic()
         self.reader.read_file(file)
@@ -46,7 +46,7 @@ class EEGTent:
         )
         return result
 
-    def _get_phases(self, filter_parameters, type="hilbert"):
+    def _get_phases(self, filter_parameters, filter_type="hilbert"):
         lowcut = filter_parameters["lowcut"]
         highcut = filter_parameters["highcut"]
         fs = filter_parameters["fs"]
@@ -54,12 +54,12 @@ class EEGTent:
 
         # Compute phases
         self.phase_data = self.raw_data.copy()
-        if type == "hilbert":
+        if filter_type == "hilbert":
             for ch in self.channels:
                 data = self.raw_data[ch]
                 filter_data = filter_signal(data, lowcut, highcut, fs, order)
                 self.phase_data[ch] = hilbert_phase(filter_data)
-        elif type == "wavelet":
+        elif filter_type == "wavelet":
             for ch in self.channels:
                 data = self.raw_data[ch]
                 self.phase_data[ch] = wavelet_phase(
@@ -68,38 +68,27 @@ class EEGTent:
         else:
             raise ValueError("Invalid type of phase")
 
-    def _collect_reults(self, results_array):
-        results = []
-        results += [
-            (target, source, Tent, Tent_no_sur, Tent_sur)
-            for target, source, Tent, Tent_no_sur, Tent_sur in results_array
-        ]
-        results = pd.DataFrame(
-            results, columns=["target", "source", "Tent", "Tent_no_sur", "Tent_sur"]
-        )
-
     def tent(
         self,
         tent_parameters,
         filter_parameters,
         filter_type="hilbert",
         multiprocessing=False,
-        log=True,
     ):
 
-        self._get_phases(filter_parameters, type=filter_type)
+        self._get_phases(filter_parameters, filter_type=filter_type)
 
         if multiprocessing:
-            DATA_id = ray.put(self.phase_data)
+            data_id = ray.put(self.phase_data)
         else:
-            DATA_id = self.raw_data
+            data_id = self.raw_data
         # Set tent for each channel
         sims = []
         for target_channel in self.channels:
             for source_channel in self.channels:
                 if target_channel != source_channel:
                     sim_params = {
-                        "data": DATA_id,
+                        "data": data_id,
                         "source": source_channel,
                         "target": target_channel,
                         "tent_parameters": tent_parameters,
@@ -123,12 +112,14 @@ class EEGTent:
         if multiprocessing:
             res = ray.get(res)
 
-        results = []
-        results += [
+        results = list(
             (target, source, Tent, Tent_no_sur, Tent_sur)
             for target, source, Tent, Tent_no_sur, Tent_sur in res
-        ]
+        )
         results = pd.DataFrame(
             results, columns=["target", "source", "Tent", "Tent_no_sur", "Tent_sur"]
         )
+        # create Flow column
+        results["Flow"] = (results["Tent"] > 0).astype("int")
+
         return results

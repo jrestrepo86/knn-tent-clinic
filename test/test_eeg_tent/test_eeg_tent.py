@@ -1,9 +1,6 @@
 import sys
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 
 ROOT_PATH = Path(__file__).absolute().parent.parent.parent
@@ -11,9 +8,11 @@ DATA_PATH = ROOT_PATH / "data"
 
 try:
     from src.clinic_tent.eeg_tent import EEGTent
+    from src.data_visualization.matrix_plot import flow_matrix_plot, tent_matrix_plot
 except ImportError:
     sys.path.append("../../src/")
     from clinic_tent.eeg_tent import EEGTent
+    from data_visualization.matrix_plot import flow_matrix_plot, tent_matrix_plot
 
 
 def test_eeg_tent():
@@ -32,29 +31,27 @@ def test_eeg_tent():
         filter_parameters,
         filter_type="hilbert",
         multiprocessing=True,
-        log=True,
     )
-    # Pivot the DataFrame to create a matrix
-    pivot_df = results.pivot(index="target", columns="source", values="Tent")
+    print(results)
+    # Create a tent matrix plot
+    tent_fig = tent_matrix_plot(results)
+    # Create a flow matrix plot
+    flow_fig = flow_matrix_plot(results)
 
-    # Create the heatmap using Plotly
-    fig = px.imshow(
-        pivot_df,
-        labels=dict(x="Source", y="Target", color="Tent"),
-        x=pivot_df.columns,
-        y=pivot_df.index,
-        color_continuous_scale="Viridis",
-    )
-
-    # Update layout for better visualization
-    fig.update_layout(
-        title="Tent Matrix: Target vs Source",
-        xaxis_nticks=len(pivot_df.columns),
-        yaxis_nticks=len(pivot_df.index),
-    )
+    # Combine the plots into a single figure
+    # fig = go.Figure(data=[tent_fig.data[0], flow_fig.data[0]])
+    # fig.update_layout(title_text="Tent and Flow Matrix Comparison")
+    # fig.update_xaxes(title_text="Source Channels")
+    # fig.update_yaxes(title_text="Target Channels")
+    # fig.update_layout(showlegend=False)
+    # fig.update_layout(xaxis_showticklabels=False, yaxis_showticklabels=False)
+    # fig.update_layout(width=800, height=600)
+    # fig.update_layout(margin={"l": 10, "r": 10, "t": 50, "b": 10})
+    # fig.update_layout(title_x=0.5)
 
     # Show the plot
-    fig.show()
+    tent_fig.show()
+    flow_fig.show()
 
 
 if __name__ == "__main__":
