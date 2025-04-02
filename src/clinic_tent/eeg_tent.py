@@ -1,3 +1,4 @@
+import itertools
 import time
 
 import pandas as pd
@@ -25,19 +26,21 @@ class EEGTent:
         self.channels = self.reader.channels
 
     def _compute_tent(self, data, target_channel, source_channel, tent_parameters):
-        m = tent_parameters["embedding_dim"]
-        tau = tent_parameters["tau"]
-        u = tent_parameters["u"]
-        nn = tent_parameters["nn"]
-        n_surrogates = tent_parameters["nsurrogates"]
         # Create KNN tent object
         target = data[target_channel].values
         source = data[source_channel].values
 
-        knn_tent = KnnTent(target, source, m, tau, u, nn)
+        knn_tent = KnnTent(
+            source=source,
+            target=target,
+            m=tent_parameters["embedding_dim"],
+            tau=tent_parameters["tau"],
+            u=tent_parameters["u"],
+            nn=tent_parameters["nn"],
+        )
         # Compute transfer entropy
-        out = knn_tent.knn_tent(n_surrogates=n_surrogates)
-        return (target_channel, source_channel, out[0], out[1], out[2])
+        out = knn_tent.knn_tent(n_surrogates=tent_parameters["nsurrogates"])
+        return (source_channel, target_channel, out[0], out[1], out[2])
 
     @ray.remote(num_cpus=NUM_CPUS)
     def _multiprocessing(self, data, target_channel, source_channel, tent_parameters):
@@ -67,6 +70,26 @@ class EEGTent:
                 )
         else:
             raise ValueError("Invalid type of phase")
+
+    def _substract_tent(self, results):
+        pairs = list(itertools.combinations(self.channels, 2))
+        results_ = []
+
+        for ch1, ch2 in pairs:
+            tent_ch1_ch2 = results[
+                (results["source"] == ch1) & (results["target"] == ch2)
+            ]["tent"].values[0]
+            tent_ch2_ch1 = results[
+                (results["source"] == ch2) & (results["target"] == ch1)
+            ]["tent"].values[0]
+            tent = tent_ch1_ch2 - tent_ch2_ch1
+            flow = 1 if tent > 0 else -1
+            results_.append((ch1, ch2, tent, flow))
+        results_ = pd.DataFrame(results_, columns=["source", "target", "tent", "flow"])
+        return results_
+
+    def _get_flow(self, tent):
+        return (tent > 0).astype("int")
 
     def tent(
         self,
@@ -100,26 +123,25 @@ class EEGTent:
             if multiprocessing:
                 res.append(
                     self._multiprocessing.remote(
-                        self, s["data"], s["target"], s["source"], s["tent_parameters"]
+                        self, s["data"], s["source"], s["target"], s["tent_parameters"]
                     )
                 )
             else:
                 res.append(
                     self._compute_tent(
-                        s["data"], s["target"], s["source"], s["tent_parameters"]
+                        s["data"], s["source"], s["target"], s["tent_parameters"]
                     )
                 )
         if multiprocessing:
             res = ray.get(res)
 
         results = list(
-            (target, source, Tent, Tent_no_sur, Tent_sur)
-            for target, source, Tent, Tent_no_sur, Tent_sur in res
+            (target, source, tent, tent_no_sur, tent_sur)
+            for target, source, tent, tent_no_sur, tent_sur in res
         )
         results = pd.DataFrame(
-            results, columns=["target", "source", "Tent", "Tent_no_sur", "Tent_sur"]
+            results, columns=["source", "target", "tent", "tent_no_sur", "tent_sur"]
         )
-        # create Flow column
-        results["Flow"] = (results["Tent"] > 0).astype("int")
+        results = self._substract_tent(results)
 
         return results

@@ -32,22 +32,10 @@ def test_eeg_tent():
         filter_type="hilbert",
         multiprocessing=True,
     )
-    print(results)
     # Create a tent matrix plot
     tent_fig = tent_matrix_plot(results)
     # Create a flow matrix plot
     flow_fig = flow_matrix_plot(results)
-
-    # Combine the plots into a single figure
-    # fig = go.Figure(data=[tent_fig.data[0], flow_fig.data[0]])
-    # fig.update_layout(title_text="Tent and Flow Matrix Comparison")
-    # fig.update_xaxes(title_text="Source Channels")
-    # fig.update_yaxes(title_text="Target Channels")
-    # fig.update_layout(showlegend=False)
-    # fig.update_layout(xaxis_showticklabels=False, yaxis_showticklabels=False)
-    # fig.update_layout(width=800, height=600)
-    # fig.update_layout(margin={"l": 10, "r": 10, "t": 50, "b": 10})
-    # fig.update_layout(title_x=0.5)
 
     # Show the plot
     tent_fig.show()
