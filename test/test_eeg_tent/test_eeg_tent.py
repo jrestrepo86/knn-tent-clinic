@@ -1,15 +1,8 @@
 """Test eeg"""
-import sys
-from pathlib import Path
-
-# Add project root to Python path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
 
 from knn_tent_clinic import DATA_PATH
 from knn_tent_clinic.src.clinic_tent.eeg_tent import EEGTent
 from knn_tent_clinic.src.data_visualization.matrix_plot import make_matrices_plots
-
 
 
 def test_eeg_tent():

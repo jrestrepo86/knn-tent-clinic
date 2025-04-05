@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.9
+  - python=3.12.7
   - numpy
   - scipy
   - matplotlib
@@ -16,6 +16,9 @@ dependencies:
   - flake8
   - jupyter
   - pip
+  - setuptools
+  - wheel
   - pip:
-    - pytest-cov
-    - pre-commit
+      - -e . # Install the current directory in editable mode
+      - pytest-cov
+      - pre-commit

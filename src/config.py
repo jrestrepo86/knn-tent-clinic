@@ -1,32 +1,17 @@
-import sys
 from pathlib import Path
 
-ROOT_PATH = Path(__file__).absolute().parent
+# Define root path
+ROOT_PATH = Path(__file__).parent
 
+# Define data path
 DATA_PATH = ROOT_PATH / "data"
 
-NUM_CPUS = 8
+# Define src path
+SRC_PATH = ROOT_PATH / "src"
 
+# Define test path
+TEST_PATH = ROOT_PATH / "test"
 
-MATRIX_CHANNELS_ORDER = [
-    "F1",
-    "F3",
-    "C3",
-    "P3",
-    "O1",
-    "F7",
-    "T3",
-    "T5",
-    "Fz",
-    "Cz",
-    "Pz",
-    "Oz",
-    "T6",
-    "T4",
-    "F8",
-    "O2",
-    "P4",
-    "C4",
-    "F4",
-    "F2",
-]
+# Optional: Define other important paths
+CACHE_PATH = ROOT_PATH / "cache"
+LOGS_PATH = ROOT_PATH / "logs"
