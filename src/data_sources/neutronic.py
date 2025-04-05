@@ -36,7 +36,6 @@ class Neutronic:
             "F4",
             "F2",
         ]
-        self.data = None
 
     def read_file(self, file_path):
         data = []
@@ -55,4 +54,4 @@ class Neutronic:
                         continue
 
         # Create DataFrame with the extracted data and channel labels
-        self.data = pd.DataFrame(data, columns=self.channels)
+        return pd.DataFrame(data, columns=self.channels)

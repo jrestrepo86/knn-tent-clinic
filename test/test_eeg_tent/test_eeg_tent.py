@@ -1,18 +1,15 @@
+"""Test eeg"""
 import sys
 from pathlib import Path
 
-import plotly.graph_objects as go
+# Add project root to Python path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 
-ROOT_PATH = Path(__file__).absolute().parent.parent.parent
-DATA_PATH = ROOT_PATH / "data"
+from knn_tent_clinic import DATA_PATH
+from knn_tent_clinic.src.clinic_tent.eeg_tent import EEGTent
+from knn_tent_clinic.src.data_visualization.matrix_plot import make_matrices_plots
 
-try:
-    from src.clinic_tent.eeg_tent import EEGTent
-    from src.data_visualization.matrix_plot import flow_matrix_plot, tent_matrix_plot
-except ImportError:
-    sys.path.append("../../src/")
-    from clinic_tent.eeg_tent import EEGTent
-    from data_visualization.matrix_plot import flow_matrix_plot, tent_matrix_plot
 
 
 def test_eeg_tent():
@@ -32,14 +29,16 @@ def test_eeg_tent():
         filter_type="hilbert",
         multiprocessing=True,
     )
-    # Create a tent matrix plot
-    tent_fig = tent_matrix_plot(results)
-    # Create a flow matrix plot
-    flow_fig = flow_matrix_plot(results)
-
-    # Show the plot
-    tent_fig.show()
-    flow_fig.show()
+    fig = make_matrices_plots(results)
+    fig.show()
+    # # Create a tent matrix plot
+    # tent_fig = tent_matrix_plot(results)
+    # # Create a flow matrix plot
+    # flow_fig = flow_matrix_plot(results)
+    #
+    # # Show the plot
+    # tent_fig.show()
+    # flow_fig.show()
 
 
 if __name__ == "__main__":

@@ -1,0 +1,21 @@
+name: knn-tent-clinic
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - numpy
+  - scipy
+  - matplotlib
+  - pandas
+  - scikit-learn
+  - plotly
+  - pytest
+  - black
+  - isort
+  - flake8
+  - jupyter
+  - pip
+  - pip:
+    - pytest-cov
+    - pre-commit

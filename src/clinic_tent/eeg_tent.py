@@ -1,14 +1,15 @@
 import itertools
-import time
+from pathlib import Path
 
 import pandas as pd
 import ray
-from config import ROOT_PATH
-from data_sources.neutronic import Neutronic
+from config import NUM_CPUS, ROOT_PATH
+from data_sources.data_handler import DataHandler
 from knn_tent.knn_tent import KnnTent
 from preprocessing.tools import filter_signal, hilbert_phase, wavelet_phase
 
-NUM_CPUS = 8
+from clinic_tent.eeg_tent_tools import CUSTOM_FILTER_PARAMETERS
+
 if not ray.is_initialized():
     ray.init(
         runtime_env={"working_dir": ROOT_PATH},
@@ -17,13 +18,11 @@ if not ray.is_initialized():
 
 
 class EEGTent:
-    def __init__(self, file):
-        self.file = file
-        self.reader = Neutronic()
-        self.reader.read_file(file)
-        self.raw_data = pd.DataFrame()
-        self.raw_data = self.reader.data
-        self.channels = self.reader.channels
+    def __init__(self, file, hardware_source="neutronic"):
+        self.source_file = Path(file)
+        self.data_handler = DataHandler(self.source_file, hardware_source)
+        self.raw_data = self.data_handler.read_data()
+        self.channels = self.data_handler.get_channels()
 
     def _compute_tent(self, data, target_channel, source_channel, tent_parameters):
         # Create KNN tent object
@@ -49,10 +48,9 @@ class EEGTent:
         )
         return result
 
-    def _get_phases(self, filter_parameters, filter_type="hilbert"):
+    def _get_phases(self, filter_parameters, fs, filter_type="hilbert"):
         lowcut = filter_parameters["lowcut"]
         highcut = filter_parameters["highcut"]
-        fs = filter_parameters["fs"]
         order = filter_parameters["order"]
 
         # Compute phases
@@ -88,23 +86,24 @@ class EEGTent:
         results_ = pd.DataFrame(results_, columns=["source", "target", "tent", "flow"])
         return results_
 
-    def _get_flow(self, tent):
-        return (tent > 0).astype("int")
-
     def tent(
         self,
         tent_parameters,
-        filter_parameters,
+        fs,
+        filters_parameters=None,
         filter_type="hilbert",
         multiprocessing=False,
     ):
 
-        self._get_phases(filter_parameters, filter_type=filter_type)
+        if filters_parameters is None:
+            self._get_phases(CUSTOM_FILTER_PARAMETERS, fs=fs, filter_type=filter_type)
+        else:
+            self._get_phases(filters_parameters, fs=fs, filter_type=filter_type)
 
         if multiprocessing:
             data_id = ray.put(self.phase_data)
         else:
-            data_id = self.raw_data
+            data_id = self.phase_data
         # Set tent for each channel
         sims = []
         for target_channel in self.channels:

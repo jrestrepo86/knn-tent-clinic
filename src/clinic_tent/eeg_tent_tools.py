@@ -1,6 +1,29 @@
 import ray
 from ray.experimental.tqdm_ray import tqdm
 
+CUSTOM_FILTER_PARAMETERS = {
+    "alpha": {
+        "lowcut": 8.0,
+        "highcut": 12.0,
+        "order": 5,
+    },
+    "beta1": {
+        "lowcut": 19.0,
+        "highcut": 25.0,
+        "order": 5,
+    },
+    "beta2": {
+        "lowcut": 25.0,
+        "highcut": 31.0,
+        "order": 5,
+    },
+    "tetha": {
+        "lowcut": 4.0,
+        "highcut": 8.0,
+        "order": 5,
+    },
+}
+
 
 @ray.remote
 class Progress:
