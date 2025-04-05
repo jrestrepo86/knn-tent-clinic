@@ -1,16 +1,17 @@
 """Test Tent with hennon map"""
 
-import sys
 
 import numpy as np
 import plotly.graph_objects as go
 from tqdm import tqdm
 
-try:
-    from src.knn_tent.knn_tent import KnnTent
-except ImportError:
-    sys.path.append("../../src/")
-    from knn_tent.knn_tent import KnnTent
+from knn_tent_clinic.knn_tent.knn_tent import KnnTent
+
+# try:
+#     from src.knn_tent.knn_tent import KnnTent
+# except ImportError:
+#     sys.path.append("../../src/")
+#     from knn_tent.knn_tent import KnnTent
 
 
 def coupled_henon(n, c):

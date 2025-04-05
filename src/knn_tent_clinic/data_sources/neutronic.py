@@ -39,7 +39,7 @@ class Neutronic:
 
     def read_file(self, file_path):
         data = []
-        with open(file_path, "r") as file:
+        with open(file_path, "r", encoding="utf-8") as file:
             for line in file:
                 parts = line.strip().split()
                 # Ensure the line has enough elements to extract EEG channels

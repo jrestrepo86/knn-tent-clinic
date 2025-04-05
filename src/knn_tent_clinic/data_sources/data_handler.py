@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from data_sources.neutronic import Neutronic
-from data_sources.open_bci import OpenBci
+from .neutronic import Neutronic
+from .open_bci import OpenBci
 
 
 class DataHandler:

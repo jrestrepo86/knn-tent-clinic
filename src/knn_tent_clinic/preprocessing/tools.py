@@ -2,16 +2,7 @@ import numpy as np
 from scipy.signal import butter, filtfilt, hilbert
 
 
-def hilbert_phase(signal):
-
-    signal = np.asarray(signal, dtype=np.float64)
-    analytic_signal = hilbert(signal)
-    analytic_signal = np.asarray(analytic_signal, dtype=np.complex128)
-    instantaneous_phase = np.angle(analytic_signal)
-    return instantaneous_phase
-
-
-def filter_signal(signal, lowcut, highcut, fs, order=4):
+def hilbert_phase(signal,lowcut, highcut, fs, order=4):
     # Validate input arguments
     if lowcut >= highcut:
         raise ValueError("lowcut must be less than highcut")
@@ -24,7 +15,12 @@ def filter_signal(signal, lowcut, highcut, fs, order=4):
     high = highcut / nyq
     b, a = butter(N=order, Wn=[low, high], btype="band", output="ba")
     filtered = filtfilt(b, a, signal)  # Zero-phase filtering
-    return filtered
+    analytic_signal = hilbert(filtered)
+    instantaneous_phase = np.angle(analytic_signal)
+    return instantaneous_phase
+
+
+
 
 
 def wavelet_phase(signal, lowcut, highcut, fs, omega0=5.0, num_scales=10):

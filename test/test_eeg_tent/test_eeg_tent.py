@@ -1,24 +1,22 @@
 """Test eeg"""
 
 from knn_tent_clinic import DATA_PATH
-from knn_tent_clinic.src.clinic_tent.eeg_tent import EEGTent
-from knn_tent_clinic.src.data_visualization.matrix_plot import make_matrices_plots
+from knn_tent_clinic.clinic_tent.eeg_tent import EEGTent
+from knn_tent_clinic.data_visualization.matrix_plot import make_matrices_plots
 
 
 def test_eeg_tent():
     file = DATA_PATH / "neutronic_data.txt"
     tent_parameters = {
-        "embedding_dim": 2,
+        "embedding-dim": 2,
         "tau": 2,
         "u": 1,
-        "nn": 8,
-        "nsurrogates": 1,
+        "nn": 5,
+        "nsurrogates": 5,
     }
-    filter_parameters = {"lowcut": 8, "highcut": 12, "fs": 65, "order": 4}
-    eeg_tent = EEGTent(file)
+    eeg_tent = EEGTent(file, sampling_frequency=65)
     results = eeg_tent.tent(
         tent_parameters,
-        filter_parameters,
         filter_type="hilbert",
         multiprocessing=True,
     )

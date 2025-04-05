@@ -11,13 +11,12 @@ dependencies:
   - scikit-learn
   - plotly
   - pytest
-  - black
-  - isort
   - flake8
-  - jupyter
   - pip
   - setuptools
   - wheel
+  - tqdm
+  - ray-default
   - pip:
       - -e . # Install the current directory in editable mode
       - pytest-cov

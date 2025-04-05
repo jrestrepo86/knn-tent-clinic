@@ -15,7 +15,7 @@ import numpy as np
 from scipy.special import psi
 from sklearn.neighbors import KDTree
 
-from knn_tent.knn_tent_tools import (
+from .knn_tent_tools import (
     embedding,
     random_circular_shift,
     series_normalization,

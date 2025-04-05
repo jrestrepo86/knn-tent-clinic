@@ -1,7 +1,8 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.subplots as sp
-from config import MATRIX_CHANNELS_ORDER
+
+from knn_tent_clinic import MATRIX_CHANNELS_ORDER
 
 channels_order = MATRIX_CHANNELS_ORDER
 
