@@ -9,16 +9,17 @@ description = "KNN-based tent clinic analysis"
 authors = [{ name = "Juan F. Restrepo", email = "juan.restrepo@uner.edu.ar" }]
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = [
-  "numpy",
-  "scipy",
-  "pandas",
-  "scikit-learn",
-  "plotly",
-  'ray[default]',
-  'tqdm',
-  'debugpy',
-]
+# dependencies = [
+#   'ray[default]',
+#   "numpy",
+#   "scipy",
+#   "pandas",
+#   "scikit-learn",
+#   "matplotlib",
+#   "plotly",
+#   'tqdm',
+#   'debugpy',
+# ]
 
 [project.urls]
 Source = "https://github.com/jrestrepo86/knn-tent-clinic.git"

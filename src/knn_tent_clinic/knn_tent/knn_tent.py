@@ -31,8 +31,7 @@ class KnnTent:
         source (np.ndarray): The source time series.
         target (np.ndarray): The target time series.
         m (int): Embedding dimension.
-        tau_source (int): Time delay for the source signal.
-        tau_target (int): Time delay for the target signal.
+        tau: Time delay.
         u (int): Prediction horizon.
         nn (int): Number of nearest neighbors.
     """
@@ -149,30 +148,17 @@ class KnnTent:
 
         # Find nearest neighbors in the full embedding space
         tree = KDTree(embedded_space, metric=metric)
-        nn_indices = tree.query(
-            embedded_space, k=self.nn + 1, return_distance=False, sort_results=True
-        )
 
         # Compute the maximum distance to the k-th nearest neighbor
-        distances = (
-            np.array(
-                [
-                    np.max(
-                        np.abs(embedded_space[nn_indices[i]] - embedded_space[i]),
-                        axis=1,
-                    ).max()
-                    for i in range(n)
-                ]
-            )
-            - 1e-15  # Small offset to avoid numerical issues
-        )
+        distances, _ = tree.query(embedded_space, k=self.nn + 1)
+        distances = distances[:, self.nn] - 1.0e-15
 
         # KSG estimation for different subspaces
         m = self.m
         subspaces = [
-            (m, 2 * m),  # Target_t
-            (0, 2 * m),  # Target_ut
-            (m, 3 * m),  # TargetSource_t
+            (m, 2 * m),  # Target_past (nnT)
+            (0, 2 * m),  # Target_u -- Target_past (nnTu)
+            (m, 3 * m),  # Target_past -- Source_past (nnTS)
         ]
         counts = []
         for start, end in subspaces:
@@ -186,7 +172,7 @@ class KnnTent:
             psi(self.nn) + np.mean(psi(nnT)) - np.mean(psi(nnTu)) - np.mean(psi(nnTS))
         )
 
-        return transfer_entropy
+        return max(0.0, transfer_entropy)
 
     def knn_tent(self, n_surrogates=30):
         """

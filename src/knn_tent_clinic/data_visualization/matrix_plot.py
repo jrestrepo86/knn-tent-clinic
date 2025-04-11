@@ -1,192 +1,97 @@
-import plotly.express as px
+import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 import plotly.subplots as sp
 
-from knn_tent_clinic import MATRIX_CHANNELS_ORDER
-
-channels_order = MATRIX_CHANNELS_ORDER
+from knn_tent_clinic import MATRIX_CHANNELS_ORDER as ch_order
 
 
-def tent_matrix_plot(tent_results):
+def make_matrices_plot(df):
 
-    # Pivot the DataFrame to create a matrix
-    pivot_df = tent_results.pivot(index="source", columns="target", values="tent")
-    pivot_df = pivot_df.reindex(index=channels_order, columns=channels_order)
-
-    # Create the heatmap using Plotly
-    fig = px.imshow(
-        pivot_df,
-        labels={"y": "Source", "x": "Target", "color": "tent"},
-        x=channels_order,
-        y=channels_order,
-        color_continuous_scale="Viridis",
-    )
-    fig = plot_lines(fig)
-    fig.update_layout(
-        title="Tent Matrix: Source ⇨ Target",
-        xaxis_nticks=len(channels_order) + 1,
-        yaxis_nticks=len(channels_order) + 1,
-    )
+    data_array = []
+    freq_bands = df["freq-band"].unique()
+    cmin = df["tent_diff"].min()
+    cmax = df["tent_diff"].max()
+    for band in freq_bands:
+        data_array.append(df[df["freq-band"] == band])
+    fig = make_subplots(data_array[0])
+    fig.frames = create_frames(data_array)
+    fig = plot_layout(fig, cmin, cmax)
+    fig = add_lines(fig)
     return fig
 
 
-def plot_lines(fig, color="RoyalBlue"):
-    lw = 3
-    fig.add_vline(x=7.5, line_width=lw, line_dash="dash", line_color=color)
-    fig.add_vline(x=11.5, line_width=lw, line_dash="dash", line_color=color)
-    fig.add_hline(y=7.5, line_width=lw, line_dash="dash", line_color=color)
-    fig.add_hline(y=11.5, line_width=lw, line_dash="dash", line_color=color)
-    fig.add_shape(
-        type="line",
-        x0=-0.5,
-        y0=-0.5,
-        x1=19.5,
-        y1=19.5,
-        line=dict(color=color, width=lw, dash="dot"),
+def df_to_matrix(df, measure):
+    # Initialize the matrix with NaN values
+    matrix = pd.DataFrame(np.nan, index=ch_order, columns=ch_order)
+
+    # Populate the matrix symmetrically
+    for _, row in df.iterrows():
+        src = row["source"]
+        tgt = row["target"]
+        value = row[f"{measure}"]
+        matrix.loc[src, tgt] = value
+        matrix.loc[tgt, src] = value  # Ensure symmetry
+
+    # Create a mask for the upper triangular matrix
+    mask = np.triu(np.ones(matrix.shape, dtype=bool), k=0)
+    upper_tri_matrix = matrix.where(mask)
+
+    return upper_tri_matrix
+
+
+def create_matrix(df, measure):
+
+    mat_values = df_to_matrix(df, measure)
+    coloraxis_val = "" if measure == "tent_diff" else 2
+    heatmap = go.Heatmap(
+        x=ch_order,
+        y=ch_order,
+        z=mat_values,
+        # colorscale="Viridis",
+        coloraxis=f"coloraxis{coloraxis_val}",
     )
-    return fig
+    return heatmap
 
 
-def flow_matrix_plot(tent_results):
-
-    flow_results = tent_results.copy()
-    # Pivot the DataFrame to create a matrix
-    pivot_df = flow_results.pivot(index="source", columns="target", values="flow")
-    pivot_df = pivot_df.reindex(index=channels_order, columns=channels_order)
-
-    # Create the heatmap using Plotly
-    fig = px.imshow(
-        pivot_df,
-        labels={"y": "Source", "x": "Target", "color": "flow"},
-        x=channels_order,
-        y=channels_order,
-        color_continuous_scale="Viridis",
-    )
-    fig = plot_lines(fig)
-    fig.update_layout(
-        title="Tent Matrix: Source ⇨ Target",
-        xaxis_nticks=len(channels_order) + 1,
-        yaxis_nticks=len(channels_order) + 1,
-    )
-    return fig
+def create_frames(data_array):
+    frames = []
+    for data in data_array:
+        freq_band = data["freq-band"].unique()
+        tent_heatmap = create_matrix(data, "tent_diff")
+        flow_heatmap = create_matrix(data, "flow")
+        frame = go.Frame(
+            data=[tent_heatmap, flow_heatmap],
+            name=f"{freq_band}",
+            traces=[0, 1],  # Associate with both heatmap traces
+        )
+        frames.append(frame)
+    return frames
 
 
-# def make_matrices_plots(tent_results):
-#
-#     # Generate individual figures
-#     fig_tent = tent_matrix_plot(tent_results)
-#     fig_flow = flow_matrix_plot(tent_results)
-#
-#     # Create subplots with independent color scales
-#     fig = sp.make_subplots(
-#         rows=1,
-#         cols=2,
-#         subplot_titles=("Tent Matrix: Source ⇨ Target", "Flow Matrix: Source ⇨ Target"),
-#         horizontal_spacing=0.15,
-#     )
-#
-#     # Add traces with separate color axes
-#     fig.add_trace(fig_tent.data[0], row=1, col=1)
-#     fig.add_trace(fig_flow.data[0], row=1, col=2)
-
-# # Adjust shape references for subplots
-# def adjust_shapes(shapes, xref, yref):
-#     adjusted = []
-#     for shape in shapes:
-#         s = shape.to_plotly_json().copy()
-#         if "xref" in s and s["xref"] == "x":
-#             s["xref"] = xref
-#         if "yref" in s and s["yref"] == "y":
-#             s["yref"] = yref
-#         adjusted.append(s)
-#     return adjusted
-#
-# # Add shapes to appropriate subplots
-# for shape in adjust_shapes(fig_tent.layout.shapes, "x1", "y1"):
-#     fig.add_shape(shape, row=1, col=1)
-# for shape in adjust_shapes(fig_flow.layout.shapes, "x2", "y2"):
-#     fig.add_shape(shape, row=1, col=2)
-#
-# # Update layout with independent color bars
-# fig.update_layout(
-#     # Left plot settings
-#     xaxis1=dict(title="Target", nticks=len(channels_order)) + 1,
-#     yaxis1=dict(title="Source", nticks=len(channels_order)) + 1,
-#     # Right plot settings
-#     xaxis2=dict(title="Target", nticks=len(channels_order) + 1),
-#     yaxis2=dict(title="Source", nticks=len(channels_order) + 1),
-#     # Color axis settings
-#     coloraxis1=dict(
-#         colorbar=dict(title="tent", x=0.45, y=0.5), colorscale="Viridis"
-#     ),
-#     coloraxis2=dict(
-#         colorbar=dict(title="flow", x=1.02, y=0.5), colorscale="Viridis"
-#     ),
-#     # Remove main title
-#     title_text=None,
-# )
-#
-# # Set independent color axes for each trace
-# fig.data[0].coloraxis = "coloraxis1"
-# fig.data[1].coloraxis = "coloraxis2"
-#
-# # Adjust annotation positions if needed
-# fig.update_annotations(font_size=12)
-#
-# fig.update_layout(
-#     title="Tent and Flow - Source ⇨ Target",
-# )
-
-
-# return fig
-def make_matrices_plots(tent_results):
-    # Generate pivot DataFrames
-    tent_pivot = tent_results.pivot(
-        index="source", columns="target", values="tent"
-    ).reindex(index=channels_order, columns=channels_order)
-    flow_pivot = tent_results.pivot(
-        index="source", columns="target", values="flow"
-    ).reindex(index=channels_order, columns=channels_order)
-
-    # Create subplot figure
+def make_subplots(df):
     fig = sp.make_subplots(
         rows=1,
         cols=2,
-        subplot_titles=("Tent Matrix: Source ⇨ Target", "Flow Matrix: Source ⇨ Target"),
+        subplot_titles=("Tent Matrix", "Flow Matrix"),
         horizontal_spacing=0.15,
         column_widths=[0.5, 0.5],
     )
-
-    # Add tent matrix heatmap
+    # initial traces
     fig.add_trace(
-        go.Heatmap(
-            x=channels_order,
-            y=channels_order,
-            z=tent_pivot.values,
-            colorscale="Viridis",
-            coloraxis="coloraxis",
-            name="Tent",
-        ),
+        create_matrix(df, "tent_diff"),
         row=1,
         col=1,
     )
-
-    # Add flow matrix heatmap
     fig.add_trace(
-        go.Heatmap(
-            x=channels_order,
-            y=channels_order,
-            z=flow_pivot.values,
-            colorscale="Viridis",
-            coloraxis="coloraxis2",
-            name="Flow",
-        ),
+        create_matrix(df, "flow"),
         row=1,
         col=2,
     )
+    return fig
 
-    # Add lines to both subplots
-    n_channels = len(channels_order)
+
+def add_lines(fig):
     for col in [1, 2]:
         # Vertical lines
         fig.add_vline(
@@ -231,44 +136,105 @@ def make_matrices_plots(tent_results):
             type="line",
             x0=-0.5,
             y0=-0.5,
-            x1=n_channels - 0.5,
-            y1=n_channels - 0.5,
+            x1=len(ch_order) - 0.5,
+            y1=len(ch_order) - 0.5,
             line=dict(color="RoyalBlue", width=3, dash="dot"),
             xref=xref,
             yref=yref,
         )
+    return fig
 
-    # Update layout with dual colorbars and axis labels
+
+def plot_layout(fig, cmin, cmax):
+
     fig.update_layout(
         coloraxis=dict(
-            colorbar=dict(title="Tent", x=0.45, y=0.5, yanchor="middle", len=0.4)
+            colorscale="sunsetdark",
+            colorbar=dict(
+                title="Tent",
+                x=0.45,
+                y=0.5,
+                yanchor="middle",
+                len=0.4,
+            ),
+            cmin=cmin,
+            cmax=cmax,
         ),
         coloraxis2=dict(
-            colorbar=dict(title="Flow", x=1.05, y=0.5, yanchor="middle", len=0.4)
+            colorscale="sunsetdark",
+            colorbar=dict(
+                title="Flow",
+                x=1.05,
+                y=0.5,
+                yanchor="middle",
+                len=0.4,
+            ),
+            cmin=-1,
+            cmax=1,
         ),
         xaxis=dict(
-            tickvals=list(range(len(channels_order))),
-            ticktext=channels_order,
-            nticks=len(channels_order) + 1,
+            tickvals=list(range(len(ch_order))),
+            ticktext=ch_order,
+            nticks=len(ch_order) + 1,
         ),
         yaxis=dict(
-            tickvals=list(range(len(channels_order))),
-            ticktext=channels_order,
-            nticks=len(channels_order) + 1,
+            tickvals=list(range(len(ch_order))),
+            ticktext=ch_order,
+            nticks=len(ch_order) + 1,
+            autorange="reversed",
         ),
         xaxis2=dict(
-            tickvals=list(range(len(channels_order))),
-            ticktext=channels_order,
-            nticks=len(channels_order) + 1,
+            tickvals=list(range(len(ch_order))),
+            ticktext=ch_order,
+            nticks=len(ch_order) + 1,
         ),
         yaxis2=dict(
-            tickvals=list(range(len(channels_order))),
-            ticktext=channels_order,
-            nticks=len(channels_order) + 1,
+            tickvals=list(range(len(ch_order))),
+            ticktext=ch_order,
+            nticks=len(ch_order) + 1,
+            autorange="reversed",
         ),
         title_text="Tent and Flow Matrices",
         title_x=0.5,
         showlegend=False,
+        # Critical for maintaining color bars during animation
+        coloraxis_showscale=True,
+        coloraxis2_showscale=True,
     )
 
+    fig.update_layout(
+        sliders=[
+            {
+                "active": 0,
+                "yanchor": "top",
+                "xanchor": "left",
+                "currentvalue": {
+                    "font": {"size": 16},
+                    "prefix": "Frequency Band:",
+                    "visible": True,
+                    "xanchor": "right",
+                },
+                "transition": {"duration": 300},
+                "pad": {"b": 10, "t": 50},
+                "len": 0.9,
+                "x": 0.1,
+                "y": -0.3,
+                "steps": [
+                    {
+                        "args": [
+                            [frame.name],
+                            {
+                                "frame": {"duration": 0, "redraw": True},
+                                "mode": "immediate",
+                                "transition": {"duration": 0},
+                            },
+                        ],
+                        "label": f"{frame.name}",
+                        "method": "animate",
+                    }
+                    for frame in fig.frames
+                ],
+            }
+        ],
+    )
     return fig

@@ -1,23 +1,21 @@
-name: knn-tent-clinic
+name: knn-tent-env
 channels:
   - conda-forge
   - defaults
 dependencies:
   - python=3.12.7
-  - numpy
-  - scipy
-  - matplotlib
-  - pandas
-  - scikit-learn
-  - plotly
-  - pytest
-  - flake8
   - pip
   - setuptools
   - wheel
+  - numpy
+  - scipy
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - plotly
+  - pytest
   - tqdm
-  - ray-default
+  - debugpy
   - pip:
+      - ray[default]
       - -e . # Install the current directory in editable mode
-      - pytest-cov
-      - pre-commit

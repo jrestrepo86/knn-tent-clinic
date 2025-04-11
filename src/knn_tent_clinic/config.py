@@ -10,25 +10,25 @@ DATA_PATH = ROOT_PATH / "data"
 NUM_CPUS = 8
 
 CUSTOM_FILTER_PARAMETERS = {
+    "theta": {
+        "lowcut": 4.0,
+        "highcut": 8.0,
+        "order": 4,
+    },
     "alpha": {
         "lowcut": 8.0,
         "highcut": 12.0,
-        "order": 5,
+        "order": 4,
     },
     "beta1": {
         "lowcut": 19.0,
         "highcut": 25.0,
-        "order": 5,
+        "order": 4,
     },
     "beta2": {
         "lowcut": 25.0,
         "highcut": 31.0,
-        "order": 5,
-    },
-    "theta": {
-        "lowcut": 4.0,
-        "highcut": 8.0,
-        "order": 5,
+        "order": 4,
     },
 }
 

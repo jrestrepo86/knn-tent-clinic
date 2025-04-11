@@ -1,6 +1,7 @@
 import itertools
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import ray
 
@@ -83,37 +84,65 @@ class EEGTent:
             filter_data_array, columns=["freq-band", "channel", "data"]
         )
 
-    def _substract_tent(self, results):
-        pairs = list(itertools.combinations(self.channels, 2))
-        results_ = []
+    # def _substract_tent(self, results):
+    #     pairs = list(itertools.combinations(self.channels, 2))
+    #     results_ = []
+    #
+    #     freq_bands = self.phase_data["freq-band"].unique()
+    #     for freq_band in freq_bands:
+    #         data = results[results["freq-band"] == freq_band]
+    #
+    #         for ch1, ch2 in pairs:
+    #             tent_ch1_ch2 = data[(data["source"] == ch1) & (data["target"] == ch2)][
+    #                 "tent"
+    #             ].values[0]
+    #             tent_ch2_ch1 = data[(data["source"] == ch2) & (data["target"] == ch1)][
+    #                 "tent"
+    #             ].values[0]
+    #             tent = tent_ch1_ch2 - tent_ch2_ch1
+    #             flow = 1 if tent > 0 else -1
+    #             results_.append((freq_band, ch1, ch2, "tent", tent))
+    #             results_.append((freq_band, ch1, ch2, "flow", flow))
+    #     results_ = pd.DataFrame(
+    #         results_, columns=["freq-band", "source", "target", "data-type", "data"]
+    #     )
+    #     return results_
 
-        for ch1, ch2 in pairs:
-            tent_ch1_ch2 = results[
-                (results["source"] == ch1) & (results["target"] == ch2)
-            ]["tent"].values[0]
-            tent_ch2_ch1 = results[
-                (results["source"] == ch2) & (results["target"] == ch1)
-            ]["tent"].values[0]
-            tent = tent_ch1_ch2 - tent_ch2_ch1
-            flow = 1 if tent > 0 else -1
-            results_.append((ch1, ch2, tent, flow))
-        results_ = pd.DataFrame(results_, columns=["source", "target", "tent", "flow"])
-        return results_
+    def _substract_tent(self, results):
+        # Merge the DataFrame with itself to pair each (ch1, ch2) with (ch2, ch1)
+        merged = results.merge(
+            results,
+            left_on=["freq-band", "source", "target"],
+            right_on=["freq-band", "target", "source"],
+            suffixes=("_ch1ch2", "_ch2ch1"),
+        )
+
+        # Filter to keep only one direction (source < target to avoid duplicates)
+        filtered = merged[merged["source_ch1ch2"] < merged["target_ch1ch2"]].copy()
+
+        # Calculate the tent difference and flow
+        filtered["tent_diff"] = filtered["tent_ch1ch2"] - filtered["tent_ch2ch1"]
+        filtered["flow"] = filtered["tent_diff"].apply(lambda x: np.sign(x))
+        filtered = filtered.rename(
+            columns={"source_ch1ch2": "source", "target_ch1ch2": "target"}
+        )
+
+        return filtered[["freq-band", "source", "target", "tent_diff", "flow"]]
 
     def tent(
         self,
         tent_parameters,
-        filters_parameters=None,
+        filters=None,
         filter_type="hilbert",
         multiprocessing=False,
     ):
 
-        if filters_parameters is None:
+        if filters is None:
             self._get_phases(
                 CUSTOM_FILTER_PARAMETERS, fs=self.fs, filter_type=filter_type
             )
         else:
-            self._get_phases(filters_parameters, fs=self.fs, filter_type=filter_type)
+            self._get_phases(filters, fs=self.fs, filter_type=filter_type)
 
         if multiprocessing:
             data_id = ray.put(self.phase_data)
@@ -168,14 +197,14 @@ class EEGTent:
         results = pd.DataFrame(
             results,
             columns=[
-                "freq_band",
+                "freq-band",
                 "source",
                 "target",
                 "tent",
-                "tent_no_sur",
-                "tent_sur",
+                "tent-no-sur",
+                "tent-sur",
             ],
         )
-        # results = self._substract_tent(results)
+        results = self._substract_tent(results)
 
         return results
